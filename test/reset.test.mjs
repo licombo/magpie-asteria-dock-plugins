@@ -5,7 +5,7 @@ import { dirname, join } from "node:path"
 import test from "node:test"
 import { chooseKey, relayOrigin } from "../lib/keys.mjs"
 import { DockPlugin } from "../index.mjs"
-import { cleanMessage, cleanUsingDock, login } from "../lib/login.mjs"
+import { cleanMessage, cleanUsingDock, login, stripCompanyMarkers } from "../lib/login.mjs"
 import { modelRecord } from "../lib/models.mjs"
 import { dockTargets, groupUses } from "../lib/targets.mjs"
 import { paths } from "../lib/paths.mjs"
@@ -377,6 +377,26 @@ test("manual clean writes a Dock-changed tool file back so the magpie key stays"
   assert.equal(readFileSync(layout.claude, "utf8"), claudeFile)
   assert.match(cleanMessage(result), /写回/)
   assert.match(cleanMessage(result), /key 没有换/)
+})
+
+test("cleanup strips Pi's company marker and keeps the magpie provider", () => {
+  const home = mkdtempSync(join(tmpdir(), "dock-strip-pi-"))
+  const layout = paths(home, "darwin")
+  mkdirSync(dirname(layout.piModels), { recursive: true })
+  writeFileSync(layout.piSettings, JSON.stringify({ defaultProvider: "magpie", defaultModel: "group/smart-split" }))
+  writeFileSync(layout.piModels, JSON.stringify({
+    asteria_dock: { provider_id: "company:pi", prev: { "settings.defaultProvider": "magpie" } },
+    providers: {
+      magpie: { apiKey: "magpie", baseUrl: "http://127.0.0.1:3425/v1" },
+      asteria: { apiKey: KEY_A, baseUrl: "http://relay.example/v1" },
+    },
+  }))
+  assert.deepEqual(stripCompanyMarkers(layout, ["pi"], ["relay.example"]), ["pi"])
+  const models = JSON.parse(readFileSync(layout.piModels, "utf8"))
+  assert.equal(models.asteria_dock, undefined)
+  assert.equal(models.providers.asteria, undefined)
+  assert.equal(models.providers.magpie.apiKey, "magpie")
+  assert.equal(JSON.parse(readFileSync(layout.piSettings, "utf8")).defaultProvider, "magpie")
 })
 
 test("trae models Magpie does not know are given a 1M window", () => {

@@ -101,7 +101,7 @@ Dock 写过的文件，第一行可能有 `# asteria_dock provider=... prev={...
 
 **Claude 同时有 Magpie token 和公司 key。** Magpie 接入时写 `ANTHROPIC_AUTH_TOKEN=magpie` 和 `ANTHROPIC_BASE_URL=http://127.0.0.1:3425`。清理不删这两项。如果重启把它们盖掉了，插件按清理前的文件写回。
 
-**登录会不会清掉 Magpie token。** 不会。登录可以退出 Dock 去清公司选择，但工具文件里的 Magpie key 会按登录前的内容留着。没有已接入且正在使用这家供应商的 agent 时，登录不退出 Dock。
+**登录会不会清掉 Magpie token。** 不会。登录会退出 Dock，清掉这些工具的公司选择，并去掉工具文件里的公司标记。Pi 去掉 `models.json` 里的 `asteria_dock` 和 `providers.asteria`。Magpie 的 key 和 `providers.magpie` 留着。没有已接入且正在使用这家供应商的 agent 时，登录不退出 Dock。
 
 **清理失败后 Dock 被退出了。** 还没重新打开就失败时，插件会再打开一次 Dock。带 Magpie key 的工具文件如果被改过，会按清理前写回。
 
