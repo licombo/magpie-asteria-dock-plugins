@@ -39,9 +39,9 @@ magpie plugin login dock
 1. `~/.config/magpie/applied.json` 里有它，说明 Magpie 已经接入。
 2. 它的第一个模型字段走这家供应商。Magpie 供应商行也只看这一个字段。直接选中的名字去掉 `magpie/` 后是 `dock`、`dock/...` 或 `dock-...`。选的是 `group/组id` 时，按 `~/.config/magpie/providers.json` 展开成员，`[1m]` 先去掉。成员是 `dock/模型` 就算；成员又是组就继续展开。组的 `disabled` 为真时整组跳过。`off` 是关掉的成员列表，只跳过列出的成员。别的供应商、只是登录了 Dock，都不算正在使用。
 
-没有命中的工具不动。命中之后，插件退出并重新打开 Dock，只把这些工具的 `current` 置空、删掉对应的 `company_pins`。公司 `providers[]` 里的 `sk-` 留着。
+没有命中的工具不动。命中之后，插件退出 Dock，只把这些工具的 `current` 置空、删掉对应的 `company_pins`，再去掉工具文件里的公司标记，然后重新打开。公司 `providers[]` 里的 `sk-` 留着。
 
-工具文件不改。里面的 Magpie 网关 token 和 `http://127.0.0.1:3425` 留着。如果这次重启把带 Magpie key 的工具文件改掉了，插件按清理前的内容写回去。
+Magpie 网关 token 和 `http://127.0.0.1:3425` 留着。如果这次重启把带 Magpie key 的工具文件改掉了，插件按去掉公司标记之后的内容写回去。
 
 没有单独的清理按钮。供应商页的沙箱按钮改不了本机文件，所以清理跟登录走同一次点击。没有命中的工具时，这次登录只保存 key，不退出 Dock。
 
@@ -71,7 +71,7 @@ magpie plugin login dock
 
 1. `current.<tool>` 设成 `null`。
 2. 删掉 `company_pins.<tool>` 这个键。留一个空对象 `{}` 不够，Dock 仍会按公司供应商写回。
-3. 工具文件里不再是 Dock 要维护的公司配置。插件自己不改工具文件，所以这一条靠 Magpie 接入时写下的网关配置。只改 Dock 的 `config.json`，运行中的页面不会跟着变。只改工具文件、`current` 仍是 `company:<tool>`，启动时 Dock 会把 `sk-` 写回去。
+3. 工具文件里不再是 Dock 要维护的公司配置。登录命中这些工具时，会在重新打开 Dock 之前去掉对应标记。只改 Dock 的 `config.json`，运行中的页面不会跟着变。只改工具文件、`current` 仍是 `company:<tool>`，启动时 Dock 会把 `sk-` 写回去。
 
 改完后插件退出并重新打开 Dock，等它写出启动对账。日志在 macOS 的 `~/Library/Logs/com.asteria.dock/Asteria Dock.log`。然后只检查这次命中的工具：`current` 仍是空，pin 键仍不在，公司记录上的 `sk-` 还在。
 
@@ -79,7 +79,7 @@ magpie plugin login dock
 
 ## 各工具文件里有什么
 
-插件不改这些文件。表里是 Dock 选 Asteria 时会写进去的东西，也是它和 Magpie 冲突的地方。
+表里是 Dock 选 Asteria 时会写进去的东西，也是它和 Magpie 冲突的地方。登录命中该工具时，只去掉公司标记。
 
 | 工具 | 文件 | Dock 选 Asteria 时写入 | Magpie 接入后应留下 |
 | --- | --- | --- | --- |
@@ -101,7 +101,7 @@ Dock 写过的文件，第一行可能有 `# asteria_dock provider=... prev={...
 
 **Claude 同时有 Magpie token 和公司 key。** Magpie 接入时写 `ANTHROPIC_AUTH_TOKEN=magpie` 和 `ANTHROPIC_BASE_URL=http://127.0.0.1:3425`。清理不删这两项。如果重启把它们盖掉了，插件按清理前的文件写回。
 
-**登录会不会清掉 Magpie token。** 不会。登录会退出 Dock，清掉这些工具的公司选择，并去掉工具文件里的公司标记。Pi 去掉 `models.json` 里的 `asteria_dock` 和 `providers.asteria`。Magpie 的 key 和 `providers.magpie` 留着。没有已接入且正在使用这家供应商的 agent 时，登录不退出 Dock。
+**登录会不会清掉 Magpie token。** 不会。登录会退出 Dock，清掉这些工具的公司选择，并去掉工具文件里的公司标记。Pi 去掉 `asteria_dock`、`providers.asteria` 和 `*.asteria.bak`。OpenCode 去掉 `providers.asteria`、`provider.asteria`、`asteria/` 模型和公司地址。Codex 去掉 `[model_providers.asteria]`；当前 provider 的地址是公司站点时，改到已有的 `magpie`，并去掉这个块里的公司地址。Claude 去掉 env 里的公司 `sk-` 和公司站点，留下 `ANTHROPIC_AUTH_TOKEN=magpie`。Hermes 去掉带公司地址、`sk-` 或 Dock 注释的行。Magpie 的 key 留着。没有已接入且正在使用这家供应商的 agent 时，登录不退出 Dock。
 
 **清理失败后 Dock 被退出了。** 还没重新打开就失败时，插件会再打开一次 Dock。带 Magpie key 的工具文件如果被改过，会按清理前写回。
 

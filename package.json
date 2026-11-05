@@ -1,6 +1,6 @@
 {
   "name": "asteria-dock",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Magpie provider for Asteria Dock. Login saves the company key and resets Dock only for agents that are connected and using this provider.",
   "type": "module",
   "main": "./index.mjs",

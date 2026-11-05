@@ -67,6 +67,9 @@ base_url = "http://relay.example/v1"
   assert.doesNotMatch(codex, /sk-test/)
   const official = `model_provider = "custom"\nmodel = "gpt-5.5"\n\n[model_providers.custom]\nbase_url = "http://relay.example/v1"\nrequires_openai_auth = true\n`
   assert.equal(resetCodex(official), official)
+  const onCompanyHost = resetCodex(official, ["relay.example"])
+  assert.match(onCompanyHost, /model_provider = "magpie"/)
+  assert.doesNotMatch(onCompanyHost, /relay\.example/)
 })
 
 test("claude keeps the magpie token and hermes drops the relay key", () => {
@@ -377,6 +380,70 @@ test("manual clean writes a Dock-changed tool file back so the magpie key stays"
   assert.equal(readFileSync(layout.claude, "utf8"), claudeFile)
   assert.match(cleanMessage(result), /写回/)
   assert.match(cleanMessage(result), /key 没有换/)
+})
+
+test("cleanup strips company markers for every selected agent and keeps magpie keys", () => {
+  const home = mkdtempSync(join(tmpdir(), "dock-strip-agents-"))
+  const layout = paths(home, "darwin")
+  mkdirSync(dirname(layout.piModels), { recursive: true })
+  mkdirSync(dirname(layout.opencode), { recursive: true })
+  mkdirSync(dirname(layout.codex), { recursive: true })
+  mkdirSync(dirname(layout.claude), { recursive: true })
+  mkdirSync(dirname(layout.hermes), { recursive: true })
+  writeFileSync(layout.piSettings, JSON.stringify({ defaultProvider: "magpie", defaultModel: "group/smart-split" }))
+  writeFileSync(layout.piModels, JSON.stringify({
+    providers: { magpie: { apiKey: "magpie", baseUrl: "http://127.0.0.1:3425/v1" } },
+  }))
+  writeFileSync(`${layout.piModels}.asteria.bak`, "ASTERIA_CREATED\n")
+  writeFileSync(layout.opencode, JSON.stringify({
+    $schema: "https://opencode.ai/config.json",
+    model: "asteria/deepseek-flash",
+    asteria_dock: { provider_id: "company:opencode" },
+    provider: {
+      asteria: { options: { apiKey: KEY_A, baseURL: "http://relay.example/v1" } },
+      magpie: { options: { apiKey: "magpie", baseURL: "http://127.0.0.1:3425/v1" } },
+    },
+  }))
+  writeFileSync(`${layout.opencode}.asteria.bak`, "{}\n")
+  writeFileSync(layout.codex, `model_provider = "custom"\nmodel = "gpt-5.5"\n\n[model_providers.custom]\nbase_url = "http://relay.example/v1"\nrequires_openai_auth = true\n\n[model_providers.magpie]\nbase_url = "http://127.0.0.1:3425/v1"\nexperimental_bearer_token = "magpie"\n`)
+  writeFileSync(`${layout.codex}.asteria.bak`, "model_provider = \"custom\"\n")
+  writeFileSync(layout.claude, JSON.stringify({
+    env: {
+      ANTHROPIC_AUTH_TOKEN: "magpie",
+      ANTHROPIC_BASE_URL: "http://127.0.0.1:3425",
+      ANTHROPIC_API_KEY: KEY_A,
+    },
+  }))
+  writeFileSync(`${layout.claude}.asteria.bak`, "{}\n")
+  writeFileSync(layout.hermes, `model: keep\nbase_url: http://relay.example/v1\napi_key: ${KEY_A}\n`)
+  writeFileSync(`${layout.hermes}.asteria.bak`, "model: old\n")
+
+  const changed = stripCompanyMarkers(layout, ["pi", "opencode", "codex", "claude", "hermes"], ["relay.example"])
+  assert.deepEqual(changed.sort(), ["claude", "codex", "hermes", "opencode", "pi"])
+
+  const pi = JSON.parse(readFileSync(layout.piModels, "utf8"))
+  assert.equal(pi.providers.magpie.apiKey, "magpie")
+  assert.equal(existsSync(`${layout.piModels}.asteria.bak`), false)
+  const opencode = JSON.parse(readFileSync(layout.opencode, "utf8"))
+  assert.equal(opencode.provider.asteria, undefined)
+  assert.equal(opencode.asteria_dock, undefined)
+  assert.equal(opencode.model, undefined)
+  assert.equal(opencode.provider.magpie.options.apiKey, "magpie")
+  assert.equal(existsSync(`${layout.opencode}.asteria.bak`), false)
+  const codex = readFileSync(layout.codex, "utf8")
+  assert.match(codex, /model_provider = "magpie"/)
+  assert.match(codex, /experimental_bearer_token = "magpie"/)
+  assert.doesNotMatch(codex, /relay\.example/)
+  assert.equal(existsSync(`${layout.codex}.asteria.bak`), false)
+  const claude = JSON.parse(readFileSync(layout.claude, "utf8"))
+  assert.equal(claude.env.ANTHROPIC_AUTH_TOKEN, "magpie")
+  assert.equal(claude.env.ANTHROPIC_BASE_URL, "http://127.0.0.1:3425")
+  assert.equal(claude.env.ANTHROPIC_API_KEY, undefined)
+  assert.equal(existsSync(`${layout.claude}.asteria.bak`), false)
+  const hermes = readFileSync(layout.hermes, "utf8")
+  assert.match(hermes, /model: keep/)
+  assert.doesNotMatch(hermes, /relay\.example|sk-test/)
+  assert.equal(existsSync(`${layout.hermes}.asteria.bak`), false)
 })
 
 test("cleanup strips Pi's company marker and keeps the magpie provider", () => {
