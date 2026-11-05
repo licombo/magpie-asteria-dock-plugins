@@ -353,6 +353,41 @@ test("a later login does not clear Dock when a tool is back on Asteria", async (
   assert.equal(saved.providers[0].api_key, KEY_A)
 })
 
+test("login succeeds after stripping a company marker from a file that also holds the magpie key", async () => {
+  const home = mkdtempSync(join(tmpdir(), "dock-login-strip-ok-"))
+  const layout = paths(home, "darwin")
+  const appliedFile = join(home, "applied.json")
+  mkdirSync(layout.dockHome, { recursive: true })
+  mkdirSync(dirname(layout.piModels), { recursive: true })
+  writeFileSync(layout.dockConfig, JSON.stringify({
+    current: { pi: "company:pi" },
+    company_pins: { pi: {} },
+    providers: [{ id: "company:pi", kind: "company", tool_id: "pi", status: "supported", api_key: KEY_A, base_url: "http://relay.example/v1" }],
+  }))
+  writeFileSync(layout.piModels, JSON.stringify({
+    asteria_dock: { provider_id: "company:pi" },
+    providers: {
+      asteria: { apiKey: KEY_A },
+      magpie: { apiKey: "magpie", baseUrl: "http://127.0.0.1:3425/v1" },
+    },
+  }))
+  writeFileSync(appliedFile, JSON.stringify({ pi: { fields: { model: "dock/deepseek-flash" } } }))
+  const result = await login({
+    paths: layout,
+    appliedFile,
+    groups: {},
+    fetchImpl: async () => ({ ok: true, async json() { return { data: [{ id: "m1" }] } } }),
+    control: { quit: async () => {}, launch: async () => {} },
+    confirm: async () => {},
+  })
+  assert.equal(result.key, KEY_A)
+  assert.deepEqual(result.cleaned, ["pi"])
+  const models = JSON.parse(readFileSync(layout.piModels, "utf8"))
+  assert.equal(models.asteria_dock, undefined)
+  assert.equal(models.providers.asteria, undefined)
+  assert.equal(models.providers.magpie.apiKey, "magpie")
+})
+
 test("manual clean writes a Dock-changed tool file back so the magpie key stays", async () => {
   const home = mkdtempSync(join(tmpdir(), "dock-clean-restore-"))
   const layout = paths(home, "darwin")
