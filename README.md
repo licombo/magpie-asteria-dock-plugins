@@ -30,22 +30,7 @@ magpie plugin login dock
 
 页面上只有一个登录。添加账号和重新登录是同一次操作。
 
-```mermaid
-flowchart TD
-  A[Dock 里先登录] --> B[Magpie 里登录供应商 dock]
-  B --> C[选出模型最多的公司 sk-]
-  C --> D[存进 Magpie 的供应商账号]
-  D --> E{有已接入的 agent<br/>并且当前模型属于 dock?}
-  E -->|没有| F[只保存 key<br/>不退出 Dock]
-  E -->|有| G[退出 Dock]
-  G --> H[清掉这些工具的公司选择<br/>去掉工具文件里的公司标记]
-  H --> I[重新打开 Dock]
-  I --> J[确认公司选择没有被写回]
-  J --> K[已接入的 agent 不用再点 Connect]
-  F --> L[之后在 Magpie 里接入要用的 agent]
-  K --> M[请求走本机 Magpie<br/>再由 Magpie 用 sk- 转发]
-  L --> M
-```
+![你要做的](docs/flow-user.png)
 
 已经接入的 agent 不用再点 Connect。Connect 写的是网关 token，登录不会把它断开，也不会改 `applied.json`。
 
@@ -53,43 +38,13 @@ flowchart TD
 
 ## 一次登录里发生什么
 
-```mermaid
-flowchart TD
-  A[点击登录] --> B[读取 Dock 的公司 sk-]
-  B --> C[按实时模型数量选一把<br/>数量相同用较新的]
-  C --> D[交给 Magpie 保存]
-  D --> E{命中哪些工具}
-  E -->|一个都没有| F[结束<br/>Dock 保持运行]
-  E -->|有命中| G[退出 Dock]
-  G --> H{这些工具的 Dock 选择<br/>还是公司供应商?}
-  H -->|已经是官方| I[重新打开 Dock]
-  H -->|还是公司供应商| J[current 置空<br/>删掉 company_pins]
-  J --> K[去掉工具文件里的公司标记<br/>留下 Magpie 的网关 token]
-  K --> I
-  I --> L{启动对账有没有把<br/>公司选择写回去}
-  L -->|写回去了| M[登录失败<br/>已存的 sk- 不动]
-  L -->|没有| N[登录完成]
-```
+![一次登录里发生什么](docs/flow-login.png)
 
 没有单独的清理按钮。供应商页的沙箱按钮改不了本机文件，所以清理跟登录走同一次点击。
 
 ## 什么会被改，什么不会
 
-```mermaid
-flowchart LR
-  subgraph 会改
-    A[命中工具的 current]
-    B[命中工具的 company_pins]
-    C[命中工具文件里的公司标记]
-  end
-  subgraph 不会改
-    D[Dock 公司记录上的 sk-]
-    E[Magpie 已保存的 sk-]
-    F[工具文件里的 magpie token]
-    G[已接入状态 applied.json]
-    H[Grok 和其他未命中的工具]
-  end
-```
+![什么会被改，什么不会](docs/flow-keep.png)
 
 Magpie 已保存的 `sk-` 在 `~/.config/magpie/plugin-auth.json`。清理不读、不写这个文件。只有这次登录成功，Magpie 才会用新选出的那把覆盖它。登录失败时，原来那把还在。
 
