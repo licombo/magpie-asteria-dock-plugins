@@ -6,7 +6,7 @@ Magpie 供应商插件。从已经登录的 Asteria Dock 读取公司 `sk-`，�
 
 ## Dock 的 Asteria 和 Magpie 不能同时开
 
-这是使用这个插件的前提。`claude`、`pi`、`opencode`、`codex`、`hermes`、`grok` 里，同一个工具不能一边在 Dock 里选 Asteria，一边在 Magpie 里接入。
+这是使用这个插件的前提。`claude`、`pi`、`opencode`、`codex`、`hermes` 里，同一个工具不能一边在 Dock 里选 Asteria，一边在 Magpie 里接入。
 
 两边写的是同一份工具配置：
 
@@ -17,7 +17,7 @@ Magpie 供应商插件。从已经登录的 Asteria Dock 读取公司 `sk-`，�
 
 要用 Magpie，Dock 里这些工具必须停在官方配置。要用 Dock 的 Asteria，先在 Magpie 里断开对应 agent。插件不会在每次请求、每次拉模型或每次打开 Magpie 时做这件事。登录时才会按当时的接入情况清理。
 
-`agy`、`dsh` 不在这套清理里。
+`agy`、`dsh`、`grok` 不在这套清理里。Grok 不支持换成别的模型，登录不改它的 Dock 选择，也不改 `~/.grok/config.toml`。
 
 ## 安装和登录
 
@@ -37,7 +37,7 @@ magpie plugin login dock
 它只处理同时满足这两条的工具：
 
 1. `~/.config/magpie/applied.json` 里有它，说明 Magpie 已经接入。
-2. 它当前选中的模型属于这家供应商，模型名是 `dock`、`dock/...` 或 `dock-...`。路由组 `group/...`、别的供应商、只是登录了 Dock，都不算正在使用。
+2. 它的第一个模型字段走这家供应商。Magpie 供应商行也只看这一个字段。直接选中的名字去掉 `magpie/` 后是 `dock`、`dock/...` 或 `dock-...`。选的是 `group/组id` 时，按 `~/.config/magpie/providers.json` 展开成员，`[1m]` 先去掉。成员是 `dock/模型` 就算；成员又是组就继续展开。组的 `disabled` 为真时这一支跳过。别的供应商、只是登录了 Dock，都不算正在使用。
 
 没有命中的工具不动。命中之后，插件退出并重新打开 Dock，只把这些工具的 `current` 置空、删掉对应的 `company_pins`。公司 `providers[]` 里的 `sk-` 留着。
 
@@ -88,7 +88,6 @@ magpie plugin login dock
 | Codex | `~/.codex/config.toml` | `[model_providers.asteria]` 和公司 `sk-` | Magpie 的 provider。已经是官方的文件，清理时不重写 |
 | Claude | `~/.claude/settings.json` | env 里的公司 `sk-` 和站点地址 | `ANTHROPIC_AUTH_TOKEN=magpie` 和 `ANTHROPIC_BASE_URL=http://127.0.0.1:3425` |
 | Hermes | `~/.hermes/config.yaml` | 带中转地址、`sk-` 或 Dock 注释的行 | 没有这些标记的文件 |
-| Grok | `~/.grok/config.toml` | Dock 注释和中转配置 | Magpie 写入的配置 |
 
 Dock 写过的文件，第一行可能有 `# asteria_dock provider=... prev={...}`。`prev` 是切到公司供应商之前的字段。
 

@@ -2,9 +2,10 @@ import { existsSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { companyKeys, listModelIds, relayOrigin } from "./lib/keys.mjs"
+import { modelRecord } from "./lib/models.mjs"
 import { login, stillCompany } from "./lib/login.mjs"
 import { paths } from "./lib/paths.mjs"
-import { dockTargets, readApplied } from "./lib/targets.mjs"
+import { dockTargets, readApplied, readGroups } from "./lib/targets.mjs"
 
 const ID = "dock"
 const CHAT = "@ai-sdk/openai-compatible"
@@ -16,7 +17,7 @@ const icon = `data:image/png;base64,${readFileSync(join(dirname(fileURLToPath(im
 function dockConflict() {
   const file = paths().dockConfig
   if (!existsSync(file)) return []
-  const targets = new Set(dockTargets(readApplied()))
+  const targets = new Set(dockTargets(readApplied(), "dock", readGroups()))
   return stillCompany(JSON.parse(readFileSync(file, "utf8"))).filter((tool) => targets.has(tool))
 }
 
@@ -103,13 +104,7 @@ export function DockPlugin() {
         const origin = savedOrigin(auth)
         if (!key || !origin) return {}
         const ids = await listModelIds(origin, key)
-        return Object.fromEntries(ids.map((id) => [id, {
-          id,
-          providerID: ID,
-          name: id,
-          api: { id, url: `${origin}/v1`, npm: npmFor(id) },
-          status: "active",
-        }]))
+        return Object.fromEntries(ids.map((id) => [id, modelRecord(id, origin, ID, npmFor(id))]))
       },
     },
   }

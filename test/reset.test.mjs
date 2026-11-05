@@ -6,9 +6,10 @@ import test from "node:test"
 import { chooseKey, relayOrigin } from "../lib/keys.mjs"
 import { DockPlugin } from "../index.mjs"
 import { cleanMessage, cleanUsingDock, login } from "../lib/login.mjs"
-import { dockTargets } from "../lib/targets.mjs"
+import { modelRecord } from "../lib/models.mjs"
+import { dockTargets, groupUses } from "../lib/targets.mjs"
 import { paths } from "../lib/paths.mjs"
-import { resetClaude, resetCodex, resetDockConfig, resetGrok, resetHermes, resetOpenCode, resetPi } from "../lib/reset.mjs"
+import { resetClaude, resetCodex, resetDockConfig, resetHermes, resetOpenCode, resetPi } from "../lib/reset.mjs"
 
 const KEY_A = "sk-test-key-a-0123456789abcdef"
 const KEY_B = "sk-test-key-b-fedcba9876543210"
@@ -18,11 +19,11 @@ test("company_pins key is removed, company api_key stays", () => {
     current: { opencode: "company:opencode", grok: "company:grok", agy: null },
     company_pins: { opencode: {}, grok: { selected_model: "grok-4.7" }, agy: { selected_model: "keep" } },
     providers: [{ id: "company:opencode", kind: "company", api_key: KEY_A, status: "supported" }],
-  }, ["opencode", "grok"])
+  }, ["opencode"])
   assert.equal(next.current.opencode, null)
-  assert.equal(next.current.grok, null)
+  assert.equal(next.current.grok, "company:grok")
   assert.equal(Object.hasOwn(next.company_pins, "opencode"), false)
-  assert.equal(Object.hasOwn(next.company_pins, "grok"), false)
+  assert.equal(next.company_pins.grok.selected_model, "grok-4.7")
   assert.equal(next.company_pins.agy.selected_model, "keep")
   assert.equal(next.current.agy, null)
   assert.equal(next.providers[0].api_key, KEY_A)
@@ -68,7 +69,7 @@ base_url = "http://relay.example/v1"
   assert.equal(resetCodex(official), official)
 })
 
-test("claude keeps the magpie token and grok drops the relay key", () => {
+test("claude keeps the magpie token and hermes drops the relay key", () => {
   const claude = JSON.parse(resetClaude(JSON.stringify({
     env: {
       ANTHROPIC_AUTH_TOKEN: "magpie",
@@ -79,20 +80,6 @@ test("claude keeps the magpie token and grok drops the relay key", () => {
   assert.equal(claude.env.ANTHROPIC_AUTH_TOKEN, "magpie")
   assert.equal(claude.env.ANTHROPIC_BASE_URL, "http://127.0.0.1:3425")
   assert.equal(claude.env.ANTHROPIC_API_KEY, undefined)
-  const grok = resetGrok(`# asteria_dock provider=company:grok prev={"models.default":"grok-4.6"}
-[models]
-default = "asteria-grok-4.7"
-
-[endpoints]
-models_base_url = "http://relay.example/v1"
-
-[model."asteria-grok-4.7"]
-base_url = "http://relay.example/v1"
-api_key = "${KEY_A}"
-`, ["relay.example"])
-  assert.match(grok, /default = "grok-4.6"/)
-  assert.doesNotMatch(grok, /relay\.example/)
-  assert.doesNotMatch(grok, /sk-test/)
   const hermes = resetHermes(`model: keep\nbase_url: http://relay.example/v1\napi_key: ${KEY_A}\n`, ["relay.example"])
   assert.match(hermes, /model: keep/)
   assert.doesNotMatch(hermes, /relay\.example|sk-test/)
@@ -167,6 +154,7 @@ test("login writes the stamp only after cleanup is confirmed", async () => {
   writeFileSync(layout.piModels, JSON.stringify({ asteria_dock: { prev: { "settings.defaultProvider": "magpie", "settings.defaultModel": "m" } }, providers: { asteria: { apiKey: KEY_A } } }))
   const result = await login({
     paths: layout,
+    applied: {},
     fetchImpl: async () => ({ ok: true, async json() { return { data: [{ id: "m1" }, { id: "m2" }] } } }),
     control: { quit: async () => {}, launch: async () => {} },
     confirm: async () => {},
@@ -179,6 +167,7 @@ test("login writes the stamp only after cleanup is confirmed", async () => {
   assert.equal(existsSync(layout.stamp), false)
   const again = await login({
     paths: layout,
+    applied: {},
     fetchImpl: async () => ({ ok: true, async json() { return { data: [{ id: "m1" }] } } }),
     control: { quit: async () => { throw new Error("第二次不该退出 Dock") }, launch: async () => {} },
   })
@@ -203,6 +192,7 @@ test("login leaves tool files and the company key where they are", async () => {
   writeFileSync(layout.claude, claude)
   const result = await login({
     paths: layout,
+    applied: {},
     fetchImpl: async () => ({ ok: true, async json() { return { data: [{ id: "m1" }] } } }),
     control: { quit: async () => { throw new Error("登录不该退出 Dock") }, launch: async () => {} },
   })
@@ -267,14 +257,32 @@ test("manual clean only resets Dock tools whose applied model uses this provider
   assert.equal(saved.providers[0].api_key, KEY_A)
 })
 
-test("dock target matches only models that belong to this provider", () => {
+test("grok is outside the cleanup even when its applied model uses this provider", () => {
   assert.deepEqual(dockTargets({
-    claude: { fields: { model: "group/coding-models", opus: "dock/claude-opus" } },
-    pi: { fields: { model: "sub2api/gpt" } },
+    grok: { fields: { model: "dock/grok-4.7" } },
+    claude: { fields: { model: "group/coding-models" } },
+  }, "dock", {}), [])
+})
+
+test("dock target matches direct models and groups that contain this provider", () => {
+  const groups = {
+    "coding-models": { disabled: true, members: ["group/coding-default"] },
+    "coding-default": { members: ["dock/deepseek-flash:high", "dock/glm-5.3:high"] },
+    "smart-split": { members: ["group/coding-models", "group/easy-models"] },
+    "easy-models": { members: ["other/kimi-k3"] },
+    other: { members: ["sub2api/gpt"] },
+  }
+  assert.equal(groupUses("coding-models", "dock", groups), false)
+  assert.equal(groupUses("smart-split", "dock", groups), false)
+  groups["coding-models"].disabled = false
+  assert.equal(groupUses("smart-split", "dock", groups), true)
+  assert.deepEqual(dockTargets({
+    claude: { fields: { opus: "group/coding-models[1m]", model: "group/smart-split[1m]" } },
+    pi: { fields: { model: "magpie/dock/deepseek-flash" } },
     codex: { fields: { model: "dock" } },
-    hermes: { fields: { model: "notdock/x" } },
-    grok: { fields: { model: "group/coding-models" } },
-  }), ["claude", "codex"])
+    hermes: { fields: { model: "group/other" } },
+    grok: { fields: { model: "group/coding-default" } },
+  }, "dock", groups), ["claude", "pi", "codex"])
 })
 
 test("login clears Dock only for connected agents using this provider", async () => {
@@ -328,6 +336,7 @@ test("a later login does not clear Dock when a tool is back on Asteria", async (
   }))
   const result = await login({
     paths: layout,
+    applied: {},
     fetchImpl: async () => ({ ok: true, async json() { return { data: [{ id: "m1" }] } } }),
     control: { quit: async () => { throw new Error("登录不该退出 Dock") }, launch: async () => {} },
   })
@@ -368,6 +377,13 @@ test("manual clean writes a Dock-changed tool file back so the magpie key stays"
   assert.match(cleanMessage(result), /key 没有换/)
 })
 
+test("trae models Magpie does not know are given a 1M window", () => {
+  for (const id of ["deepseek-flash-trae", "glm-5.3-trae", "glm-5.3-flashx-trae"]) {
+    assert.equal(modelRecord(id, "http://relay.example", "dock", "@ai-sdk/openai-compatible").limit.context, 1_000_000)
+  }
+  assert.equal(modelRecord("glm-5.3", "http://relay.example", "dock").limit, undefined)
+})
+
 test("login is the only sign-in method", () => {
   const plugin = DockPlugin()
   assert.equal(plugin.auth.methods.length, 1)
@@ -389,6 +405,7 @@ test("login returns the origin issued with the chosen key", async () => {
   const seen = []
   const result = await login({
     paths: layout,
+    applied: {},
     fetchImpl: async (url) => {
       seen.push(url)
       return { ok: true, async json() { return { data: String(url).includes("relay-a") ? [{ id: "a" }, { id: "b" }] : [{ id: "only" }] } } }
