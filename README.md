@@ -37,7 +37,7 @@ magpie plugin login dock
 它只处理同时满足这两条的工具：
 
 1. `~/.config/magpie/applied.json` 里有它，说明 Magpie 已经接入。
-2. 它的第一个模型字段走这家供应商。Magpie 供应商行也只看这一个字段。直接选中的名字去掉 `magpie/` 后是 `dock`、`dock/...` 或 `dock-...`。选的是 `group/组id` 时，按 `~/.config/magpie/providers.json` 展开成员，`[1m]` 先去掉。成员是 `dock/模型` 就算；成员又是组就继续展开。组的 `disabled` 为真时这一支跳过。别的供应商、只是登录了 Dock，都不算正在使用。
+2. 它的第一个模型字段走这家供应商。Magpie 供应商行也只看这一个字段。直接选中的名字去掉 `magpie/` 后是 `dock`、`dock/...` 或 `dock-...`。选的是 `group/组id` 时，按 `~/.config/magpie/providers.json` 展开成员，`[1m]` 先去掉。成员是 `dock/模型` 就算；成员又是组就继续展开。组的 `disabled` 为真时整组跳过。`off` 是关掉的成员列表，只跳过列出的成员。别的供应商、只是登录了 Dock，都不算正在使用。
 
 没有命中的工具不动。命中之后，插件退出并重新打开 Dock，只把这些工具的 `current` 置空、删掉对应的 `company_pins`。公司 `providers[]` 里的 `sk-` 留着。
 

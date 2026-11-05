@@ -130,6 +130,7 @@ test("login does not quit Dock when no connected agent uses this provider", asyn
   const result = await login({
     paths: layout,
     appliedFile,
+    groups: {},
     fetchImpl: async () => ({ ok: true, async json() { return { data: [{ id: "m1" }] } } }),
     control: { quit: async () => { throw new Error("登录不该退出 Dock") }, launch: async () => { throw new Error("登录不该打开 Dock") } },
   })
@@ -275,6 +276,7 @@ test("dock target matches direct models and groups that contain this provider", 
   assert.equal(groupUses("coding-models", "dock", groups), false)
   assert.equal(groupUses("smart-split", "dock", groups), false)
   groups["coding-models"].disabled = false
+  groups["coding-models"].off = ["group/codeing-trae-cli"]
   assert.equal(groupUses("smart-split", "dock", groups), true)
   assert.deepEqual(dockTargets({
     claude: { fields: { opus: "group/coding-models[1m]", model: "group/smart-split[1m]" } },
