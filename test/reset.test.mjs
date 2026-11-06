@@ -9,7 +9,7 @@ import { cleanMessage, cleanUsingDock, login, stripCompanyMarkers } from "../lib
 import { modelRecord } from "../lib/models.mjs"
 import { dockTargets, groupUses } from "../lib/targets.mjs"
 import { paths } from "../lib/paths.mjs"
-import { resetClaude, resetCodex, resetDockConfig, resetHermes, resetOpenCode, resetPi } from "../lib/reset.mjs"
+import { clearClaudeModelLimits, resetClaude, resetCodex, resetDockConfig, resetHermes, resetOpenCode, resetPi } from "../lib/reset.mjs"
 
 const KEY_A = "sk-test-key-a-0123456789abcdef"
 const KEY_B = "sk-test-key-b-fedcba9876543210"
@@ -83,6 +83,24 @@ test("claude keeps the magpie token and hermes drops the relay key", () => {
   assert.equal(claude.env.ANTHROPIC_AUTH_TOKEN, "magpie")
   assert.equal(claude.env.ANTHROPIC_BASE_URL, "http://127.0.0.1:3425")
   assert.equal(claude.env.ANTHROPIC_API_KEY, undefined)
+  const limited = JSON.stringify({
+    model: "group/coding-models[1m]",
+    availableModels: ["dock/deepseek-flash[1m]"],
+    enforceAvailableModels: true,
+    deniedModels: ["claude-opus-4-7"],
+    modelPicker: { replaceBuiltInOptions: true, options: [{ model: "group/coding-models[1m]", label: "coding-models" }] },
+    env: { ANTHROPIC_DEFAULT_OPUS_MODEL: "group/coding-models:high[1m]", ANTHROPIC_AUTH_TOKEN: "magpie" },
+  })
+  const cleared = clearClaudeModelLimits(limited)
+  assert.equal(cleared.changed, true)
+  const policy = JSON.parse(cleared.text)
+  assert.equal(policy.model, "group/coding-models[1m]")
+  assert.equal(policy.modelPicker.options[0].label, "coding-models")
+  assert.equal(policy.env.ANTHROPIC_AUTH_TOKEN, "magpie")
+  assert.equal(Object.hasOwn(policy, "availableModels"), false)
+  assert.equal(Object.hasOwn(policy, "enforceAvailableModels"), false)
+  assert.equal(Object.hasOwn(policy, "deniedModels"), false)
+  assert.equal(clearClaudeModelLimits(cleared.text).changed, false)
   const hermes = resetHermes(`model: keep\nbase_url: http://relay.example/v1\napi_key: ${KEY_A}\n`, ["relay.example"])
   assert.match(hermes, /model: keep/)
   assert.doesNotMatch(hermes, /relay\.example|sk-test/)
@@ -304,7 +322,13 @@ test("login clears Dock only for connected agents using this provider", async ()
       { id: "company:pi", kind: "company", tool_id: "pi", status: "supported", api_key: KEY_A, base_url: "http://relay.example/v1" },
     ],
   }))
-  const claudeFile = JSON.stringify({ env: { ANTHROPIC_AUTH_TOKEN: "magpie" } })
+  const claudeFile = JSON.stringify({
+    model: "group/coding-models[1m]",
+    availableModels: ["dock/deepseek-flash[1m]"],
+    enforceAvailableModels: true,
+    deniedModels: ["claude-opus-4-7"],
+    env: { ANTHROPIC_AUTH_TOKEN: "magpie" },
+  })
   writeFileSync(layout.claude, claudeFile)
   writeFileSync(appliedFile, JSON.stringify({
     claude: { fields: { model: "dock/claude-opus" } },
@@ -324,7 +348,12 @@ test("login clears Dock only for connected agents using this provider", async ()
   const saved = JSON.parse(readFileSync(layout.dockConfig, "utf8"))
   assert.equal(saved.current.claude, null)
   assert.equal(saved.current.pi, "company:pi")
-  assert.equal(readFileSync(layout.claude, "utf8"), claudeFile)
+  const claude = JSON.parse(readFileSync(layout.claude, "utf8"))
+  assert.equal(claude.model, "group/coding-models[1m]")
+  assert.equal(claude.env.ANTHROPIC_AUTH_TOKEN, "magpie")
+  assert.equal(Object.hasOwn(claude, "availableModels"), false)
+  assert.equal(Object.hasOwn(claude, "enforceAvailableModels"), false)
+  assert.equal(Object.hasOwn(claude, "deniedModels"), false)
   assert.equal(saved.providers[0].api_key, KEY_A)
 })
 

@@ -68,7 +68,7 @@ Magpie 已保存的 `sk-` 在 `~/.config/magpie/plugin-auth.json`。清理不读
 | Pi | `~/.pi/agent/settings.json`、`models.json` | `asteria_dock`、`providers.asteria`、`*.asteria.bak` | `providers.magpie` 和网关 token |
 | OpenCode | `~/.config/opencode/opencode.json` | `providers.asteria`、`provider.asteria`、`asteria/` 模型、公司地址 | Magpie 自己的 provider |
 | Codex | `~/.codex/config.toml` | `[model_providers.asteria]`；当前地址是公司站点时改到 `magpie` | `[model_providers.magpie]` 和 token `magpie` |
-| Claude | `~/.claude/settings.json` | env 里的公司 `sk-` 和公司站点 | `ANTHROPIC_AUTH_TOKEN=magpie`、`ANTHROPIC_BASE_URL=http://127.0.0.1:3425` |
+| Claude | `~/.claude/settings.json` | env 里的公司 `sk-` 和公司站点；Claude 已接入且模型属于这家供应商时，登录去掉 `availableModels`、`enforceAvailableModels`、`deniedModels` | `ANTHROPIC_AUTH_TOKEN=magpie`、`ANTHROPIC_BASE_URL=http://127.0.0.1:3425`，以及 `model`、`modelPicker`、其余配置 |
 | Hermes | `~/.hermes/config.yaml` | 带公司地址、`sk-` 或 Dock 注释的行 | 其余配置 |
 
 Dock 认的公司标记还在时，启动对账会把 `current` 写回公司供应商。所以这三步要一起做：`current` 置空、删掉 `company_pins` 这个键、去掉工具文件里的公司标记。空的 pin 对象不算删掉。
