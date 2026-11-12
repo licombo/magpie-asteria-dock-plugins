@@ -30,7 +30,7 @@ function npmFor(id) {
 function savedKey(auth) {
   if (!auth || typeof auth !== "object") return ""
   const key = auth.key || auth.access || ""
-  return typeof key === "string" && key.startsWith("sk-") ? key : ""
+  return typeof key === "string" ? key.trim() : ""
 }
 
 function savedOrigin(auth) {

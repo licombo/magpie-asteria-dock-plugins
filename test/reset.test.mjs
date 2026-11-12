@@ -3,7 +3,7 @@ import { appendFileSync, existsSync, mkdtempSync, mkdirSync, readFileSync, write
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
-import { chooseKey, relayOrigin } from "../lib/keys.mjs"
+import { chooseKey, companyKeys, relayOrigin } from "../lib/keys.mjs"
 import { DockPlugin } from "../index.mjs"
 import { cleanMessage, cleanUsingDock, login, stripCompanyMarkers } from "../lib/login.mjs"
 import { modelRecord } from "../lib/models.mjs"
@@ -105,6 +105,20 @@ test("claude keeps the magpie token and hermes drops the relay key", () => {
   assert.match(hermes, /model: keep/)
   assert.doesNotMatch(hermes, /relay\.example|sk-test/)
   assert.equal(resetHermes("model: official\n"), "model: official\n")
+})
+
+test("companyKeys keeps a company key regardless of prefix", () => {
+  const ASTERIA = "asteria-relay-key-0123456789abcdef0123456789abcdef"
+  const found = companyKeys({
+    providers: [
+      { id: "company:claude", kind: "company", tool_id: "claude", status: "supported", api_key: ASTERIA, base_url: "http://relay.example/asteria-relay/v1" },
+      { id: "company:agy", kind: "company", tool_id: "agy", status: "unsupported", api_key: "", base_url: "http://relay.example/antigravity" },
+      { id: "custom-deepseek", kind: "custom", tool_id: "claude", status: "supported", api_key: KEY_A, base_url: "https://api.deepseek.com/anthropic" },
+    ],
+  })
+  assert.deepEqual(found.map((entry) => entry.id), ["company:claude"])
+  assert.equal(found[0].key, ASTERIA)
+  assert.equal(found[0].origin, "http://relay.example/asteria-relay")
 })
 
 test("chooseKey keeps the key with more models", async () => {

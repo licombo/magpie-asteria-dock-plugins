@@ -2,9 +2,9 @@
 
 Magpie 供应商插件。供应商 id 是 `dock`，和已安装的 `sub2api` 分开。
 
-它做两件事：从已经登录的 Asteria Dock 取出公司 `sk-`，存进 Magpie；如果有 agent 已经接入、并且当前模型属于这家供应商，同一次登录会把这些工具的 Dock 公司选择清掉。
+它做两件事：从已经登录的 Asteria Dock 取出公司 key，存进 Magpie；如果有 agent 已经接入、并且当前模型属于这家供应商，同一次登录会把这些工具的 Dock 公司选择清掉。
 
-公司记录上的 `sk-` 不删。Magpie 已经存下的 `sk-` 不删。工具文件里的 Magpie 网关 token 不删。
+公司记录上的 key 不删。Magpie 已经存下的 key 不删。工具文件里的 Magpie 网关 token 不删。
 
 ## 先看这一条
 
@@ -14,7 +14,7 @@ Dock 的 Asteria 和 Magpie 不能同时开。
 
 | 谁在写 | 写进工具文件的是 |
 | --- | --- |
-| Dock 选 Asteria | 公司 `sk-` 和 Dock 下发的站点地址 |
+| Dock 选 Asteria | 公司 key 和 Dock 下发的站点地址 |
 | Magpie 接入 | 网关 token `magpie` 和 `http://127.0.0.1:3425` |
 
 `agy`、`dsh`、`grok` 不在这套清理里。Grok 不支持换模型，登录不改它的 Dock 选择，也不改 `~/.grok/config.toml`。
@@ -46,7 +46,7 @@ magpie plugin login dock
 
 ![什么会被改，什么不会](docs/flow-keep.png)
 
-Magpie 已保存的 `sk-` 在 `~/.config/magpie/plugin-auth.json`。清理不读、不写这个文件。只有这次登录成功，Magpie 才会用新选出的那把覆盖它。登录失败时，原来那把还在。
+Magpie 已保存的公司 key 在 `~/.config/magpie/plugin-auth.json`。清理不读、不写这个文件。只有这次登录成功，Magpie 才会用新选出的那把覆盖它。登录失败时，原来那把还在。
 
 ## 怎么算正在使用这家供应商
 
@@ -75,9 +75,9 @@ Dock 认的公司标记还在时，启动对账会把 `current` 写回公司供�
 
 ## 选哪把 key
 
-公司 key 在 `~/.asteria-dock/config.json` 的 `providers[]` 里，`kind` 是 `company`，值以 `sk-` 开头。`session.json` 里的 `sso_token` 不是这把 key。
+公司 key 在 `~/.asteria-dock/config.json` 的 `providers[]` 里，`kind` 是 `company`，`api_key` 非空即可。不看前缀。Dock 0.3.69 起公司 key 是 `asteria-` 开头，更早的记录是 `sk-`。`session.json` 里的 `sso_token` 不是这把 key。自定义供应商即使 key 以 `sk-` 开头也不参与。
 
-跳过 `disabled`、`expired`、`quota_exhausted`、`unsupported`。同一把 key 只计一次。数量按实时 `GET /v1/models`，不按 Dock 缓存的模型数。数量相同用较新的 `updated_at`。
+跳过 `disabled`、`expired`、`quota_exhausted`、`unsupported`，以及没有 `api_key` 或没有 `base_url` 的记录。同一把 key 只计一次。数量按实时 `GET /v1/models`，不按 Dock 缓存的模型数。数量相同用较新的 `updated_at`。
 
 站点地址用 Dock 下发的 `base_url`。插件里不写地址。没有 `base_url` 的记录不参与选 key。
 
@@ -87,7 +87,7 @@ Dock 认的公司标记还在时，启动对账会把 `current` 写回公司供�
 
 用量卡片提示某个工具仍是公司配置时，再登录一次。账号卡片上的刷新只读用量，不会清理。Dock 没有额度接口，所以这里仍显示暂无额度。
 
-登录失败并提示 `current` 或 `company_pins` 又被写回，说明工具文件里的公司标记还在，Dock 启动时写回去了。再登录一次会按当时命中的工具重做。已保存的 `sk-` 不会因为这次失败被清掉。
+登录失败并提示 `current` 或 `company_pins` 又被写回，说明工具文件里的公司标记还在，Dock 启动时写回去了。再登录一次会按当时命中的工具重做。已保存的公司 key 不会因为这次失败被清掉。
 
 清理中途失败、Dock 还没重新打开时，插件会再打开一次 Dock。带 Magpie token 的工具文件如果被改过，会按去掉公司标记之后的内容写回。
 
