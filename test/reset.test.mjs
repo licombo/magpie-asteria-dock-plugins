@@ -241,7 +241,7 @@ test("login leaves tool files and the company key where they are", async () => {
 test("windows dock home prefers an existing config and does not leave the given home", () => {
   const home = mkdtempSync(join(tmpdir(), "dock-win-"))
   const fallback = paths(home, "win32", {})
-  assert.equal(fallback.dockConfig, join(home, "AppData", "Local", "AsteriaDock", "config.json"))
+  assert.equal(fallback.dockConfig, join(home, "AppData", "Local", "tokgate-workbench", "config.json"))
   const alt = join(home, ".asteria-dock")
   mkdirSync(alt, { recursive: true })
   writeFileSync(join(alt, "config.json"), "{}")
