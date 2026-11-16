@@ -24,7 +24,8 @@ function dockConflict() {
 function npmFor(id) {
   if (/claude/i.test(id)) return MESSAGES
   if (/(?:^|\/)(?:gpt-|o\d|codex-)/i.test(id)) return RESPONSES
-  return CHAT
+  // chat 路径要格式来回转换，转换对 thinking 历史的映射不稳，上游会间歇 400；中继 /v1/messages 原生全模型可用，所以默认走 Anthropic
+  return MESSAGES
 }
 
 function savedKey(auth) {
@@ -49,7 +50,7 @@ export function DockPlugin() {
       const was = cfg.provider[ID] ?? {}
       cfg.provider[ID] = {
         name: "Asteria Dock",
-        npm: CHAT,
+        npm: MESSAGES,
         ...was,
         models: was.models ?? {},
       }
