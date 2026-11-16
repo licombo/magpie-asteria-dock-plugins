@@ -1,12 +1,13 @@
 {
   "name": "asteria-dock",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "Magpie provider for Asteria Dock. Login saves the company key and resets Dock only for agents that are connected and using this provider.",
   "type": "module",
   "main": "./index.mjs",
   "exports": "./index.mjs",
   "files": [
     "index.mjs",
+    "dock-tools.middleware.js",
     "bin",
     "lib",
     "icon.png",
@@ -17,7 +18,7 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check index.mjs && node --check lib/*.mjs"
+    "check": "node --check index.mjs && node --check dock-tools.middleware.js && node --check lib/*.mjs"
   },
   "keywords": [
     "magpie",
@@ -28,5 +29,8 @@
   "license": "MIT",
   "engines": {
     "node": ">=20"
+  },
+  "magpie": {
+    "middleware": "./dock-tools.middleware.js"
   }
 }

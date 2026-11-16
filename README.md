@@ -2,7 +2,7 @@
 
 Magpie 供应商插件。供应商 id 是 `dock`，和已安装的 `sub2api` 分开。
 
-它做两件事：从已经登录的 Asteria Dock 取出公司 key，存进 Magpie；如果有 agent 已经接入、并且当前模型属于这家供应商，同一次登录会把这些工具的 Dock 公司选择清掉。
+它做三件事：从已经登录的 Asteria Dock 取出公司 key，存进 Magpie；如果有 agent 已经接入、并且当前模型属于这家供应商，同一次登录会把这些工具的 Dock 公司选择清掉；转发到 Dock 之前，把 Claude Code 内联的 `tool_definition` 改成 Dock 能反序列化的 `tool_reference`。
 
 公司记录上的 key 不删。Magpie 已经存下的 key 不删。工具文件里的 Magpie 网关 token 不删。
 
@@ -82,6 +82,20 @@ Dock 认的公司标记还在时，启动对账会把 `current` 写回公司供�
 站点地址用 Dock 下发的 `base_url`。插件里不写地址。没有 `base_url` 的记录不参与选 key。
 
 模型按 id 选协议：Claude 用 `@ai-sdk/anthropic`，`gpt-`、`oN`、`codex-` 用 `@ai-sdk/openai`，其余用 `@ai-sdk/openai-compatible`。三个 Trae 模型 `deepseek-flash-trae`、`glm-5.3-trae`、`glm-5.3-flashx-trae` 补了 1M 上下文，供 Magpie 显示。
+
+## 转发前改写内联工具
+
+`package.json` 的 `magpie.middleware` 指向 `dock-tools.middleware.js`。插件启用时 Magpie 会加载它，不用再单独安装。
+
+Claude Code 开了工具搜索后，延迟加载的 MCP 工具会以 `tool_addition.tool.type = tool_definition` 写进历史，schema 不在顶层 `tools[]`。Dock 的 Anthropic 口只认这个位置的 `tool_reference`，于是 422：`unknown variant tool_definition, expected tool_reference`。这段历史会留在后续每一轮里。
+
+中间件只在 `ctx.provider.id === "dock"` 且协议是 Anthropic 时改这一次的 body：
+
+1. 把 `definition` 补进顶层 `tools[]`。同名已有则保留已有。
+2. 把该块改成 `tool_reference`，`tool_name` 用工具名。
+3. `tool_result.content[]` 里的裸 `tool_definition` 同样提升后改成 `tool_reference`。
+
+`cache_control`、thinking 和别的供应商的请求不动。failover 下一次仍从原 body 出发。
 
 ## 出了问题看哪里
 
