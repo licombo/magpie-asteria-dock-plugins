@@ -92,7 +92,7 @@ Claude Code 开了工具搜索后，延迟加载的 MCP 工具会以 `tool_addit
 中间件只在 `ctx.provider.id === "dock"` 且协议是 Anthropic 时改这一次的 body：
 
 1. 把 `definition` 补进顶层 `tools[]`。同名已有则保留已有。
-2. 把该块改成 `tool_reference`，`tool_name` 用工具名。
+2. 把该块改成 `tool_reference`，`name` 用工具名。Dock 反序列化要的是 `name`，写成 `tool_name` 会 422：`missing field name`。
 3. `tool_result.content[]` 里的裸 `tool_definition` 同样提升后改成 `tool_reference`。
 
 `cache_control`、thinking 和别的供应商的请求不动。failover 下一次仍从原 body 出发。

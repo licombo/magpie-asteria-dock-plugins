@@ -21,7 +21,7 @@ test("tool_addition tool_definition becomes tool_reference and the schema is hoi
   assert.equal(rewriteInlineTools(body), true)
   assert.deepEqual(body.messages[0].content[1], {
     type: "tool_addition",
-    tool: { type: "tool_reference", tool_name: explore.name },
+    tool: { type: "tool_reference", name: explore.name },
   })
   assert.equal(body.messages[0].content[0].text, "keep")
   assert.equal(body.tools.length, 2)
@@ -34,7 +34,7 @@ test("an existing tool of the same name is kept", () => {
   rewriteInlineTools(body)
   assert.equal(body.tools.length, 1)
   assert.equal(body.tools[0], existing)
-  assert.equal(body.messages[0].content[0].tool.tool_name, explore.name)
+  assert.equal(body.messages[0].content[0].tool.name, explore.name)
 })
 
 test("a tool_definition nested in tool_result is hoisted and rewritten", () => {
@@ -45,7 +45,7 @@ test("a tool_definition nested in tool_result is hoisted and rewritten", () => {
     }],
   }
   rewriteInlineTools(body)
-  assert.deepEqual(body.messages[0].content[0].content[0], { type: "tool_reference", tool_name: explore.name })
+  assert.deepEqual(body.messages[0].content[0].content[0], { type: "tool_reference", name: explore.name })
   assert.equal(body.messages[0].content[0].content[1].text, "ok")
   assert.equal(body.tools[0].name, explore.name)
 })
